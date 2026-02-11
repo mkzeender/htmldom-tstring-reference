@@ -1,0 +1,10 @@
+[project]
+name = "htmldom-tstring"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10.0"
+dependencies = [
+    "future-tstrings>=1.0.0; python_version<'3.14'",
+    "reactpy>=1.1.0",
+]
