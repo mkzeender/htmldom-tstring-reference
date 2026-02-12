@@ -26,14 +26,14 @@ HtmlChildren = list[Union["HtmlNode", str]]
 HtmlAttributes = dict[str, Any]
 
 
-@dataclass(slots=True)
+# This class should be replaced by reactpy Component or equivalent
+@dataclass
 class HtmlNode:
     tag: str | Callable[..., HtmlNode] = ""
     attributes: HtmlAttributes = field(default_factory=dict)
     children: HtmlChildren = field(default_factory=list)
 
     def render(self) -> HtmlNode:
-        # TODO: here is where we check for a reactpy Component
         if callable(self.tag):
             return self.tag(self.children, **self.attributes).render()
         else:
@@ -182,7 +182,7 @@ class HtmlNodeParser(HTMLParser):
 
         if interp_tag is ...:
             # handle end tag shorthand
-            return None
+            return
 
         if interp_tag != node.tag:
 
