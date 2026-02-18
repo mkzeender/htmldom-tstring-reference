@@ -6,7 +6,7 @@ Adapted from jimbaker https://github.com/jimbaker/tagstr/tree/6c8f3fd34575403e77
 from __future__ import annotations
 
 from textwrap import dedent
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from html import escape
 from html.parser import HTMLParser

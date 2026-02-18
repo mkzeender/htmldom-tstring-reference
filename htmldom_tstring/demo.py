@@ -1,8 +1,15 @@
 # future-tstrings
 
-from .htmldom_tstring import html
+from reactpy import component
+
+from . import render
+
+@component
+def simple_wrapper(*children):
+    return render(t'<div class="simple-wrapper">{children}</div>')
 
 
+@component
 def demo():
     title_level = 1
     title_style = {"color": "blue"}
@@ -14,18 +21,17 @@ def demo():
     }
 
     html_paragraphs = [
-        t"""
-             <h{title_level} { {"style": title_style} }>{title}</{...}>
-             <p { {"style": body_style} }>{body}</p>
-        """
-        
+        render(t"""
+            <h{title_level} { {"style": title_style} }>{title}</{...}>
+            <p { {"style": body_style} }>{body}</p>
+        """)
         for title, body in paragraphs.items()
     ]
 
-    def simple_wrapper(*children):
-        return t'<div class="simple-wrapper">{children}</div>'
+    return render(t"""
+        <div>
+            <{simple_wrapper} v{10}="hi">{html_paragraphs}</{...}>
+        </div>
+    """)
 
-
-    result = html(t"<simple_wrapper>{html_paragraphs}</simple_wrapper>")
-    print(result)
 

@@ -2,10 +2,15 @@ from __future__ import annotations
 from string.templatelib import Interpolation, convert
 from typing import Any, Iterator
 
+import reactpy.html as reactpy_html
+
 from .compile_template import ComponentFactory, TemplateValuesList, INTERP
+
+HTML_TAG = set(reactpy_html.__all__)
+
   
 
-def render_template_values(interps: Iterator[Interpolation], factory: ComponentFactory):
+def render_template_interpolations(interps: Iterator[Interpolation], factory: ComponentFactory):
     
     # start tag
     tag_ = factory.tag
@@ -33,14 +38,14 @@ def render_template_values(interps: Iterator[Interpolation], factory: ComponentF
     children = []
     for child in factory.children:
         if isinstance(child, ComponentFactory):
-            children.append(render_template_values(interps, child))
+            children.append(render_template_interpolations(interps, child))
 
         elif child is INTERP:
             children.append(next_value(interps))
         else:
             children.append(child)
 
-    # end tag
+    # validate the end tag (Only necessary in debug mode?)
     end = factory.end_tag
     if isinstance(end, list):
         end_tag = join_strings(end, interps)
@@ -53,9 +58,19 @@ def render_template_values(interps: Iterator[Interpolation], factory: ComponentF
         raise RuntimeError(f'Start tag {tag!r} and end tag {end_tag!r} do not match.')
     
 
-    # TODO: return Component(tag=tag, )
     
     
+    
+    if isinstance(tag, str):
+
+        if tag in HTML_TAG:
+            return getattr(reactpy_html, tag)(attr_dict, *children)
+        else:
+            # TODO: lookup tag names in the Component's global namespace?
+            raise NameError('Tag name {tag!r} does not exist', name=tag)
+    else:
+        # TODO: should this be correct for user-defined tags? In practice, it will contain a bunch of whitespace strings
+        return tag(*children, **attr_dict)
     
     
         
