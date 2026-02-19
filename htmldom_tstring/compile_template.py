@@ -47,7 +47,7 @@ def escape_placeholder(string: str) -> str:
 def unescape_placeholder(string: str) -> str:
     return string.replace("$$", "$")
 
-def compile_template_strings(template: Template):
+def compile_template(template: Template):
     parser = TemplateParser()
 
     for v in template:
@@ -230,12 +230,13 @@ class TemplateParser(HTMLParser):
     def un_placeholderify(self, string: str) -> TemplateValuesList:
         
         string_parts = string.split(PLACEHOLDER)
+        interleaved_values = []
 
-        interleaved_values = [
-            item
-            for s in string_parts
-            for item in (unescape_placeholder(s), INTERP) if item != ''
-        ]
+        for s in string_parts:
+            if s:
+                interleaved_values.append(unescape_placeholder(s))
+            interleaved_values.append(INTERP)
+
         # remove unnecessary trailing INTERP
         interleaved_values.pop()
 

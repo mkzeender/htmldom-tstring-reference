@@ -31,6 +31,8 @@ def render_template_interpolations(interps: Iterator[Interpolation], factory: Co
         k, v = attr
         if isinstance(v, list):
             attr_dict[k] = join_strings(v, interps)
+        elif v is INTERP:
+            attr_dict[k] = next_value(interps)
         else:
             attr_dict[k] = v
     

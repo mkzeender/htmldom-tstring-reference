@@ -22,7 +22,7 @@ def demo():
 
     html_paragraphs = [
         render(t"""
-            <h{title_level} { {"style": title_style} }>{title}</{...}>
+            <h{title_level} style={title_style}>{title}</h{title_level}>
             <p { {"style": body_style} }>{body}</p>
         """)
         for title, body in paragraphs.items()
@@ -30,7 +30,7 @@ def demo():
 
     return render(t"""
         <div>
-            <{simple_wrapper} v{10}="hi">{html_paragraphs}</{...}>
+            <{simple_wrapper}>{html_paragraphs}</{...}>
         </div>
     """)
 
