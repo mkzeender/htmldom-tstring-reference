@@ -10,6 +10,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 import itertools
+import re
 import sys
 from types import EllipsisType
 from typing import Any, Never, TypeAlias
@@ -17,13 +18,33 @@ from enum import Enum, auto, global_enum
 
 from string.templatelib import Interpolation, Template
 
-# from ._eval_arg import eval_constant_arg
+STRIPPED_NEW_LINE = re.compile(r'\s*\n\s*')
+
+
+_cache: dict[tuple[str, ...], CompiledTemplate] = {}
+def compile_template(template: Template) -> CompiledTemplate:
+    
+    try:
+        return _cache[template.strings]
+    
+    except KeyError:
+    
+        parser = TemplateParser()
+
+        for v in template:
+            parser.feed(v)
+
+        result = _cache[template.strings] = parser.result()
+
+        return result
+
+
 
 
 TemplateValue: TypeAlias = "InterpType|str"
 TemplateValuesList: TypeAlias = list[TemplateValue]
 HtmlTag: TypeAlias = "TemplateValuesList|TemplateValue"
-HtmlChildren: TypeAlias = "list[TemplateValue|ComponentFactory]"
+HtmlChildren: TypeAlias = "list[TemplateValue|CompiledTemplate]"
 HtmlAttributes: TypeAlias = "list[tuple[str, TemplateValuesList|Any]|InterpType]"
 
 
@@ -47,13 +68,6 @@ def escape_placeholder(string: str) -> str:
 def unescape_placeholder(string: str) -> str:
     return string.replace("$$", "$")
 
-def compile_template(template: Template):
-    parser = TemplateParser()
-
-    for v in template:
-        parser.feed(v)
-
-    return parser.result()
 
 def _unparse_interpolation_expression(i: Interpolation):
     fmt = f':{i.format_spec}' if i.format_spec else ''
@@ -65,7 +79,7 @@ def _unparse_interpolation_expression(i: Interpolation):
 
 
 @dataclass
-class ComponentFactory:
+class CompiledTemplate:
     tag: HtmlTag = FRAGMENT
     end_tag: HtmlTag|EllipsisType = ...
     attributes: HtmlAttributes = field(default_factory=list)
@@ -76,7 +90,7 @@ class TemplateParser(HTMLParser):
 
     def __init__(self, filename: str = '<template string>'):
         super().__init__()
-        self.stack = [ComponentFactory()]
+        self.stack = [CompiledTemplate()]
         self.interps: deque[Interpolation] = deque()
         self._removed_interps: list[Interpolation] = []
         self.filename = filename
@@ -115,7 +129,7 @@ class TemplateParser(HTMLParser):
             raise ReactSyntaxError(message, (self.filename, None, None, None))   
                 
 
-    def result(self) -> ComponentFactory:
+    def result(self) -> CompiledTemplate:
         if len(self.stack) > 1:
             self.error(f'{self.stack[1].tag!r} element was never closed')
         if self.interps:
@@ -125,7 +139,7 @@ class TemplateParser(HTMLParser):
         self.close()
         
         match root.children:
-            case [ComponentFactory() as child]:
+            case [CompiledTemplate() as child]:
                 return child
             case _:
                 return root
@@ -156,7 +170,6 @@ class TemplateParser(HTMLParser):
                 case [str() as ks], [str() as attr_arg]:
                     # constant attr
                     # TODO: more robust compilation for constants?
-                    # attr_list.append((ks, eval_constant_arg(attr_arg)))
                     attr_list.append((ks, attr_arg))
                 case [str() as ks], [*interpolated]:
                     # interpolated attr
@@ -168,18 +181,27 @@ class TemplateParser(HTMLParser):
         
         assert not self.interps, 'We should have consumed all interpolations at this point'
 
-        this_node = ComponentFactory(tag_vals, attributes=attr_list)
+        this_node = CompiledTemplate(tag_vals, attributes=attr_list)
         self.stack[-1].children.append(this_node)
         self.stack.append(this_node)
 
     def handle_data(self, data: str) -> None:
-        interleaved_children = self.un_placeholderify(data)
+        for child in self.un_placeholderify(data):
+            if child is not INTERP:
+                # replace newlines and indentation with a single space.
+                # Similar to how Babel treats multi-line blocks of text in jsx
+                child = ' '.join(filter(None, STRIPPED_NEW_LINE.split(child)))
+
+                if not child:
+                    continue
+            
+
+            self.stack[-1].children.append(child)
+
 
         # At this point all interpolated values should have been consumed.
         assert not self.interps, "Did not interpolate all values"
         
-        self.stack[-1].children.extend(interleaved_children)
-
     def handle_endtag(self, tag: str) -> None:
         node = self.stack.pop()
         tag_vals = self.un_placeholderify(tag)
